@@ -21,6 +21,7 @@ module Control.Concurrent.HEP.Proc
     , localState
     , setLocalState
     , killChilds
+    , killProc
     , receive
     , register
     , receiveMaybe
@@ -59,6 +60,7 @@ data ParentMessage = ParentGetMBox Pid (MBox ParentAnswer)
                    | ParentSpawnProc HEPProcOptions (MBox ParentAnswer)
                    | ParentRegisterProc Pid Pid (MBox SomeMessage) (MBox ParentAnswer)
                    | ParentKillChilds Pid
+                   | ParentKillProc Pid
     deriving Typeable
 
 instance Message ParentMessage
@@ -457,6 +459,25 @@ handleParentMessage (Just (ParentKillChilds !sender)) = do
         liftIO $! do
             killThread tid
     put $! s { hepgProcList = M.empty, hepgRegProcList = M.empty}
+handleParentMessage (Just (ParentKillProc !pid@(Pid _))) = do
+    !s <- get
+    let !mrun = M.lookup pid (hepgRunningProcs s)
+    when (mrun /= Nothing) $! do
+        let Just tid = mrun
+        liftIO $! killThread tid
+    put $! s 
+        { hepgRunningProcs = M.delete pid (hepgRunningProcs s) 
+        , hepgProcList = M.delete pid (hepgProcList s)
+        }
+handleParentMessage (Just (ParentKillProc !pid@(ProcName _))) = do
+    !s <- get
+    case M.lookup pid (hepgRegProcList s) of
+        Nothing -> return ()
+        Just !rawpid -> do
+            put $! s { hepgRegProcList = 
+                M.delete pid (hepgRegProcList s)}
+            handleParentMessage (Just (ParentKillProc rawpid))
+
 
 handleLinkedMessage:: Maybe LinkedMessage -> HEPGlobal ()
 handleLinkedMessage Nothing = return ()
@@ -730,3 +751,16 @@ procSubscribeTo:: Pid -> HEPProcOptions-> HEPProcOptions
 procSubscribeTo pid opts = opts 
     { heppSubscribeTo = Just pid
     }
+
+{--
+ - maybe make it sync call?
+ -}
+killProc:: Pid-> HEP Bool
+killProc pid = do
+    subscribed <- getSubscribed
+    if pid `notElem` subscribed 
+        then return False
+        else do
+            pmbox <- parentMBox
+            liftIO $! sendMBox pmbox $! toMessage $! ParentKillProc pid
+            return True
