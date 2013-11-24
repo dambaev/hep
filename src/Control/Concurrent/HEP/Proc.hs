@@ -108,10 +108,7 @@ send !pid !msg = do
         Just !procmbox -> do
             liftIO $! sendMBox procmbox $ toMessage msg
             return ()
-        _ -> do
-            liftIO $! ioError $! userError $! "proc " ++  
-                ": " ++ show pid ++ " does not exists"
-            return ()
+        _ -> return ()
 
 
 
