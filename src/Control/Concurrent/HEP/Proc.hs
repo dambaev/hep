@@ -11,6 +11,7 @@ module Control.Concurrent.HEP.Proc
     , proc
     , procWithBracket
     , procWithSupervisor
+    , procWithSubscriber
     , procForker
     , procRegister
 --    , spawnBracket
@@ -275,18 +276,6 @@ unlinkProc !pid = do
 
 parentPid = ProcName "0"
 
-{-
--- TODO: rewrite
-newPid:: HEPGlobal Pid
-newPid = do
-    s <- get
-    let !newpid = case M.keys (hepgProcList s) of
-            [] -> 1
-            list -> let Pid some = last list
-                in some + 1
-    return $! Pid newpid
--}
-
 newPid:: HEPGlobal Pid
 newPid = do
     muuid <- liftIO $! nextUUID
@@ -310,31 +299,38 @@ runHEPGlobal main = do
 runHEP':: Pid
       -> (IO () -> IO ThreadId) -- forker
       -> Maybe Pid -- supervisor
+      -> Maybe Pid -- subscriber
       -> Maybe Pid -- subscribeTo
       -> Maybe String -- register
       -> HEPState -- state
       -> HEP () --proc
       -> HEPGlobal Pid
-runHEP' !newpid !fork sv@(Just !svpid)  !subscribeTo !mname !state !proc 
+runHEP' !newpid !fork sv@(Just !svpid) !subscriber !subscribeTo !mname !state !proc 
     | svpid `notElem` hepLinkedWithProcs state = 
-        runHEP' newpid fork sv subscribeTo mname state 
+        runHEP' newpid fork sv subscriber subscribeTo mname state 
             { hepLinkedWithProcs = svpid:(hepLinkedWithProcs state)
             }
             proc
-runHEP' !newpid !fork !sv  subscribeTo@(Just !subscriberpid) !mname !state !proc
+runHEP' !newpid !fork sv !subscriber@(Just !svpid) !subscribeTo !mname !state !proc 
+    | svpid `notElem` hepLinkedWithProcs state = 
+        runHEP' newpid fork sv subscriber subscribeTo mname state 
+            { hepLinkedWithProcs = svpid:(hepLinkedWithProcs state)
+            }
+            proc
+runHEP' !newpid !fork !sv !subscriber subscribeTo@(Just !subscriberpid) !mname !state !proc
     | subscriberpid `notElem` hepSubscribedToProcs state = 
-        runHEP' newpid fork sv subscribeTo mname state 
+        runHEP' newpid fork sv subscriber subscribeTo mname state 
             { hepSubscribedToProcs = subscriberpid:(hepSubscribedToProcs state)
             }
             proc
-runHEP' !newpid !fork !sv  !subscribeTo mname@(Just !name) !state !proc
+runHEP' !newpid !fork !sv !subscriber !subscribeTo mname@(Just !name) !state !proc
     | hepSelf state /= toPid name  = do
         storeNewRegisteredProc newpid $! toPid name
-        runHEP' newpid fork sv subscribeTo mname state 
+        runHEP' newpid fork sv subscriber subscribeTo mname state 
             { hepSelf = toPid name
             }
             proc
-runHEP' !newpid !fork !sv  !subscribeTo !mname !state !proc = do
+runHEP' !newpid !fork !sv !subscriber !subscribeTo !mname !state !proc = do
     !tid <- liftIO $! fork $! runStateT proc state >> return ()
     storeNewThread newpid tid
     return newpid
@@ -344,18 +340,19 @@ runHEP' !newpid !fork !sv  !subscribeTo !mname !state !proc = do
 runHEP:: Pid
       -> (IO () -> IO ThreadId) -- forker
       -> Maybe Pid -- supervisor
+      -> Maybe Pid -- subscriber
       -> Maybe Pid -- subscribeTo
       -> Maybe String -- register
       -> HEP () --proc
       -> HEPGlobal Pid
-runHEP !newpid fork !sv !subscribeTo !mname !proc = do
+runHEP !newpid fork !sv !subscriber !subscribeTo !mname !proc = do
     !mbox <- liftIO $! (newMBox:: IO (MBox SomeMessage))
     storeNewProc newpid mbox
     s <- get
     let !pmbox = hepgSelfMBox s
         !state = setMBox mbox $! setParentMBox pmbox $! setPid newpid $! 
             setRawPid newpid $! defaultHEPState
-    runHEP' newpid fork sv subscribeTo mname state proc
+    runHEP' newpid fork sv subscriber subscribeTo mname state proc
 
     
 storeNewProc:: Pid-> MBox SomeMessage-> HEPGlobal ()
@@ -407,8 +404,9 @@ realSpawn opts = do
     !maybesv <- case heppSupervisor opts of
         Nothing -> return Nothing
         Just sv -> realSpawn (procSubscribeTo newpid sv) >>= (return . Just)
-    runHEP newpid (heppSpawner opts) maybesv (heppSubscribeTo opts) 
-        (heppRegisterProc opts) $! procWrapperBracket 
+    runHEP newpid (heppSpawner opts) maybesv (heppSubscriber opts) 
+        (heppSubscribeTo opts) (heppRegisterProc opts) $! 
+        procWrapperBracket 
             (heppInit opts) (heppWorker opts) (heppShutdown opts)
 
 handleParentMessage::Maybe ParentMessage-> HEPGlobal ()
@@ -716,6 +714,7 @@ defaultProcOptions = HEPProcOptions
     , heppShutdown = procFinished
     , heppWorker = procFinished
     , heppSupervisor = Nothing
+    , heppSubscriber = Nothing
     , heppSpawner = forkIO
     , heppRegisterProc = Nothing
     , heppSubscribeTo = Nothing
@@ -730,6 +729,11 @@ procWithBracket init shut opts = opts
 procWithSupervisor:: HEPProcOptions-> HEPProcOptions-> HEPProcOptions
 procWithSupervisor sv opts = opts 
     { heppSupervisor = Just sv
+    }
+
+procWithSubscriber:: Pid -> HEPProcOptions-> HEPProcOptions
+procWithSubscriber sv opts = opts 
+    { heppSubscriber = Just sv
     }
 
 proc:: HEPProc -> HEPProcOptions

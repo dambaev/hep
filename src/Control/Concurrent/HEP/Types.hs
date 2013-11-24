@@ -122,6 +122,7 @@ data HEPProcOptions = HEPProcOptions
     , heppShutdown :: HEPProc
     , heppWorker :: HEPProc
     , heppSupervisor:: Maybe HEPProcOptions
+    , heppSubscriber:: Maybe Pid
     , heppSpawner :: (IO () -> IO ThreadId)
     , heppRegisterProc:: Maybe String
     , heppSubscribeTo:: Maybe Pid

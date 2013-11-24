@@ -9,6 +9,7 @@ module Control.Concurrent.HEP
     , proc
     , procWithBracket
     , procWithSupervisor
+    , procWithSubscriber
     , procForker
     , procRegister
 --    , spawnBracket
@@ -18,6 +19,7 @@ module Control.Concurrent.HEP
     , self
     , selfMBox
     , killChilds
+    , killProc
     , newMBox
     , send
     , sendMBox
