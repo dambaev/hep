@@ -30,6 +30,7 @@ module Control.Concurrent.HEP.Proc
     , linkProc
     , unlinkProc
     , getSubscribed
+    , addSubscribe
     , procRunning
     , procFinished
     , toPid

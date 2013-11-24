@@ -34,6 +34,7 @@ module Control.Concurrent.HEP
     , procReshutdown
     , linkProc
     , getSubscribed
+    , addSubscribe
     , register
     , HEPProc
     , HEP
