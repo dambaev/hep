@@ -50,6 +50,7 @@ module Control.Concurrent.HEP
     , toMessage
     , SupervisorMessage(..)
     , LinkedMessage(..)
+    , SomeMessage(..)
     )
 where
 
