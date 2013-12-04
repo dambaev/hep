@@ -44,6 +44,7 @@ module Control.Concurrent.HEP
     , procFinished
     , Message
     , HEPLocalState
+    , HEPProcOptions (..)
     , MBox
     , Pid
     , toPid
