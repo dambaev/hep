@@ -9,6 +9,7 @@ module Control.Concurrent.HEP.Proc
     , setMBox
     , spawn
     , proc
+    , getProcs
     , procWithBracket
     , procWithSupervisor
     , procWithSubscriber
@@ -56,6 +57,7 @@ data ParentAnswer = ParentProcMBox (MBox SomeMessage)
                   | ParentSpawnedProc Pid
                   | ParentProcRegistered
                   | ParentProcAlreadyRegistered
+                  | ParentPids [Pid]
 
 
 data ParentMessage = ParentGetMBox Pid (MBox ParentAnswer)
@@ -63,6 +65,7 @@ data ParentMessage = ParentGetMBox Pid (MBox ParentAnswer)
                    | ParentRegisterProc Pid Pid (MBox SomeMessage) (MBox ParentAnswer)
                    | ParentKillChilds Pid
                    | ParentKillProc Pid
+                   | ParentGetPids (MBox ParentAnswer)
     deriving Typeable
 
 instance Message ParentMessage
@@ -473,7 +476,10 @@ handleParentMessage (Just (ParentKillProc !pid@(ProcName _))) = do
             put $! s { hepgRegProcList = 
                 M.delete pid (hepgRegProcList s)}
             handleParentMessage (Just (ParentKillProc rawpid))
-
+handleParentMessage (Just (ParentGetPids outbox)) = do
+    !s <- get
+    let !ret = M.keys (hepgRunningProcs s)
+    liftIO $! sendMBox outbox $! ParentPids ret
 
 handleLinkedMessage:: Maybe LinkedMessage -> HEPGlobal ()
 handleLinkedMessage Nothing = return ()
@@ -536,7 +542,9 @@ procWrapperBracket init proc shutdown = do
                         !mypid = hepSelf state
                     case length pids of
                         0 -> do
-                            throw e
+                            -- just show throwed error. Do not rethrow
+                            -- because it will not notify parent of shutdown
+                            putStrLn $! show e
                             return HEPFinished
                         _ -> do
                             forM pids $! \pid -> do
@@ -766,3 +774,13 @@ killProc pid = do
             pmbox <- parentMBox
             liftIO $! sendMBox pmbox $! toMessage $! ParentKillProc pid
             return True
+
+getProcs:: HEP [Pid]
+getProcs = do
+    pmbox <- parentMBox
+    inbox <- liftIO $! newMBox
+    liftIO $! sendMBox pmbox $! toMessage $! ParentGetPids inbox
+    msg <- liftIO $! receiveMBox inbox
+    case msg of
+        ParentPids !some -> return some
+        _ -> error $! "ParentGetPids returned unknown message"
