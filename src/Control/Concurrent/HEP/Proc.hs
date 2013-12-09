@@ -598,7 +598,9 @@ procWrapperBracket init proc shutdown = do
                                 runStateT (send pid $! ProcWorkerFailure mypid e state inbox) state
                             !ret <- receiveMBox inbox
                             case ret of
-                                ProcContinue -> return HEPRunning
+                                ProcContinue newstate -> do
+                                    atomically $! writeTVar tmstate $! newstate
+                                    return HEPRunning
                                 (ProcRestart newstate) -> do
                                     atomically $! writeTVar tmstate $! newstate
                                     return HEPRestart

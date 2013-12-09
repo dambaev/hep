@@ -117,7 +117,7 @@ data SupervisorMessage
     deriving Typeable
 instance Message SupervisorMessage
 
-data SupervisorCommand = ProcContinue
+data SupervisorCommand = ProcContinue HEPState
                        | ProcRestart HEPState
                        | ProcFinish
                        | ProcReshutdown HEPState

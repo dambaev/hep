@@ -26,9 +26,9 @@ spawnSupervisor forker sv worker = do
     return pid
 -}
 
-procContinue:: MBox SupervisorCommand-> HEP ()
-procContinue mbox = do
-    liftIO $! sendMBox mbox $! ProcContinue
+procContinue:: MBox SupervisorCommand-> HEPState-> HEP ()
+procContinue mbox mstate = do
+    liftIO $! sendMBox mbox $! ProcContinue mstate
 
 procFinish:: MBox SupervisorCommand-> HEP ()
 procFinish mbox = do
