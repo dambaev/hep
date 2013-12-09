@@ -34,10 +34,10 @@ procFinish:: MBox SupervisorCommand-> HEP ()
 procFinish mbox = do
     liftIO $! sendMBox mbox $! ProcFinish
 
-procRestart:: MBox SupervisorCommand-> Maybe HEPSomeLocalState -> HEP ()
+procRestart:: MBox SupervisorCommand-> HEPState -> HEP ()
 procRestart mbox mstate = do
     liftIO $! sendMBox mbox $! ProcRestart mstate
 
-procReshutdown:: MBox SupervisorCommand-> Maybe HEPSomeLocalState -> HEP ()
+procReshutdown:: MBox SupervisorCommand-> HEPState -> HEP ()
 procReshutdown mbox mstate = do
     liftIO $! sendMBox mbox $! ProcReshutdown mstate

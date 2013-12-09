@@ -552,7 +552,7 @@ procWrapperBracket init proc shutdown = do
                             !ret <- receiveMBox inbox
                             case ret of
                                 (ProcRestart newstate) -> do
-                                    atomically $! writeTVar tmstate $! state {hepLocalState = newstate}
+                                    atomically $! writeTVar tmstate $! newstate
                                     return HEPRestart
                                 _ -> return HEPFinished
         shutdownHandler:: SomeException -> IO HEPProcState
@@ -577,7 +577,7 @@ procWrapperBracket init proc shutdown = do
                             !ret <- receiveMBox inbox
                             case ret of
                                 (ProcReshutdown newstate) -> do
-                                    atomically $! writeTVar tmstate $! state {hepLocalState = newstate}
+                                    atomically $! writeTVar tmstate $! newstate
                                     return HEPRestart
                                 ProcFinish -> return HEPFinished
         handler:: SomeException -> IO HEPProcState
@@ -600,7 +600,7 @@ procWrapperBracket init proc shutdown = do
                             case ret of
                                 ProcContinue -> return HEPRunning
                                 (ProcRestart newstate) -> do
-                                    atomically $! writeTVar tmstate $! state {hepLocalState = newstate}
+                                    atomically $! writeTVar tmstate $! newstate
                                     return HEPRestart
                                 ProcFinish -> return HEPFinished
         worker = do

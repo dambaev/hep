@@ -17,6 +17,10 @@ module Control.Concurrent.HEP
 --    , spawnBracketOS
     , localState
     , setLocalState
+    , toLocalState
+    , fromLocalState
+    , procStateSetLocalState
+    , procStateGetLocalState
     , self
     , selfMBox
     , killChilds

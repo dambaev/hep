@@ -62,6 +62,13 @@ data HEPState = HEPState
     , hepLocalState:: Maybe HEPSomeLocalState
     }
 
+procStateSetLocalState:: HEPState-> Maybe HEPSomeLocalState-> HEPState
+procStateSetLocalState hstate wstate = 
+    hstate { hepLocalState = wstate }
+    
+procStateGetLocalState:: HEPState -> Maybe HEPSomeLocalState
+procStateGetLocalState hstate = hepLocalState hstate
+
 defaultHEPCacheSize = 100
 
 defaultHEPState = HEPState
@@ -111,9 +118,9 @@ data SupervisorMessage
 instance Message SupervisorMessage
 
 data SupervisorCommand = ProcContinue
-                       | ProcRestart (Maybe HEPSomeLocalState)
+                       | ProcRestart HEPState
                        | ProcFinish
-                       | ProcReshutdown (Maybe HEPSomeLocalState)
+                       | ProcReshutdown HEPState
 
 type HEPProc = HEP HEPProcState
 
