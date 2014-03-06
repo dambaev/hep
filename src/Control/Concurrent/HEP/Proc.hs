@@ -579,7 +579,9 @@ procWrapperBracket init proc shutdown = do
                                 (ProcReshutdown newstate) -> do
                                     atomically $! writeTVar tmstate $! newstate
                                     return HEPRestart
-                                ProcFinish -> return HEPFinished
+                                ProcFinish -> do
+                                    runStateT notifyLinkedProcShutdown state
+                                    return HEPFinished
         handler:: SomeException -> IO HEPProcState
         handler e = do
             case fromException e of
