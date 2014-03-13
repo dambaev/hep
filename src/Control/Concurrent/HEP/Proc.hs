@@ -588,6 +588,7 @@ procWrapperBracket init proc shutdown = do
                         !mypid = hepSelf state
                     case length pids of
                         0 -> do
+                            runStateT notifyLinkedProcShutdown state
                             throw e
                             return HEPFinished
                         _ -> do
