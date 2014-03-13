@@ -493,6 +493,13 @@ handleLinkedMessage:: Maybe LinkedMessage -> HEPGlobal ()
 handleLinkedMessage Nothing = return ()
 handleLinkedMessage (Just (ProcessFinished !pid@(Pid _))) = do
     !s <- get
+    -- let !mrun = M.lookup pid (hepgRunningProcs s)
+    put $! s 
+        { hepgRunningProcs = M.delete pid (hepgRunningProcs s) 
+        , hepgProcList = M.delete pid (hepgProcList s)
+        , hepgRegProcList = M.filter (/=pid) (hepgRegProcList s)
+        }
+{-    !s <- get
     let !procs = hepgProcList s
     put $! s { hepgProcList = M.delete pid procs}
     let !regprocs = hepgRegProcList s
@@ -501,13 +508,17 @@ handleLinkedMessage (Just (ProcessFinished !pid@(Pid _))) = do
         filteredMap -> do   
             let !(intpid, _) = head $! toList filteredMap
             put $! s { hepgRegProcList = M.delete intpid regprocs}
+-}
 handleLinkedMessage (Just (ProcessFinished !pid)) = do
     !s <- get
     let !procs = hepgRegProcList s
     case M.lookup pid procs of
         Nothing -> return ()
         Just rawpid -> do
-            put $! s { hepgProcList = M.delete rawpid (hepgProcList s)}
+            put $! s { hepgProcList = M.delete rawpid (hepgProcList s)
+                     , hepgRunningProcs = M.delete rawpid (hepgRunningProcs s)
+                     , hepgRegProcList = M.delete pid (hepgRegProcList s)
+                     }
 
 getProcMBox:: Pid -> HEP (Maybe (MBox SomeMessage))
 getProcMBox pid = do
