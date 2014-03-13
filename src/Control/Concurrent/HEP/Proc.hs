@@ -623,7 +623,8 @@ procWrapperBracket init proc shutdown = do
                         !mypid = hepSelf state
                     case length pids of
                         0 -> do
-                            throw e
+                            -- throw e
+                            putStrLn $! show e
                             return HEPFinished
                         _ -> do
                             forM pids $! \pid -> do
