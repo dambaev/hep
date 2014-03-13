@@ -599,7 +599,8 @@ procWrapperBracket init proc shutdown = do
                     case length pids of
                         0 -> do
                             runStateT notifyLinkedProcShutdown state
-                            throw e
+                            -- throw e
+                            putStrLn $! show e
                             return HEPFinished
                         _ -> do
                             forM pids $! \pid -> do
