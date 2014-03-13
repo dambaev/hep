@@ -8,6 +8,7 @@ module Control.Concurrent.HEP
     , spawn
     , proc
     , getProcs
+    , getRegProcs
     , procWithBracket
     , procWithSupervisor
     , procWithSubscriber

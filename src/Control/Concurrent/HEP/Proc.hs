@@ -10,6 +10,7 @@ module Control.Concurrent.HEP.Proc
     , spawn
     , proc
     , getProcs
+    , getRegProcs
     , procWithBracket
     , procWithSupervisor
     , procWithSubscriber
@@ -66,6 +67,8 @@ data ParentMessage = ParentGetMBox Pid (MBox ParentAnswer)
                    | ParentKillChilds Pid
                    | ParentKillProc Pid
                    | ParentGetPids (MBox ParentAnswer)
+                   | ParentGetRegPids (MBox ParentAnswer)
+                   
     deriving Typeable
 
 instance Message ParentMessage
@@ -467,6 +470,7 @@ handleParentMessage (Just (ParentKillProc !pid@(Pid _))) = do
     put $! s 
         { hepgRunningProcs = M.delete pid (hepgRunningProcs s) 
         , hepgProcList = M.delete pid (hepgProcList s)
+        , hepgRegProcList = M.filter (/=pid) (hepgRegProcList s)
         }
 handleParentMessage (Just (ParentKillProc !pid@(ProcName _))) = do
     !s <- get
@@ -479,6 +483,10 @@ handleParentMessage (Just (ParentKillProc !pid@(ProcName _))) = do
 handleParentMessage (Just (ParentGetPids outbox)) = do
     !s <- get
     let !ret = M.keys (hepgRunningProcs s)
+    liftIO $! sendMBox outbox $! ParentPids ret
+handleParentMessage (Just (ParentGetRegPids outbox)) = do
+    !s <- get
+    let !ret = M.keys (hepgRegProcList s)
     liftIO $! sendMBox outbox $! ParentPids ret
 
 handleLinkedMessage:: Maybe LinkedMessage -> HEPGlobal ()
@@ -788,3 +796,13 @@ getProcs = do
     case msg of
         ParentPids !some -> return some
         _ -> error $! "ParentGetPids returned unknown message"
+
+getRegProcs:: HEP [Pid]
+getRegProcs = do
+    pmbox <- parentMBox
+    inbox <- liftIO $! newMBox
+    liftIO $! sendMBox pmbox $! toMessage $! ParentGetRegPids inbox
+    msg <- liftIO $! receiveMBox inbox
+    case msg of
+        ParentPids !some -> return some
+        _ -> error $! "ParentGetRegPids returned unknown message"
