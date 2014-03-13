@@ -385,7 +385,12 @@ storeNewRegisteredProc !rawpid !namepid = do
 childsRunning:: HEPGlobal Bool
 childsRunning = do
     !s <- get 
-    return $! M.size (hepgProcList s) > 0
+    return $! M.size (hepgRunningProcs s) > 0
+
+childsCount:: HEPGlobal Int
+childsCount = do
+    !s <- get 
+    return $! M.size (hepgRunningProcs s)
 
 parentMain:: HEPGlobal ()
 parentMain = do
@@ -394,6 +399,11 @@ parentMain = do
     !mreq  <- liftIO $! receiveMBoxAfter 1000 inbox
     case mreq of
         Nothing -> do
+            !count <- childsCount
+            _ <- if count /= 1 then return ()
+                else do
+                    liftIO $! putStrLn $! "regs = " ++ show (M.keys $! hepgRegProcList s)
+                    liftIO $! putStrLn $! "procs = " ++ show (M.keys $! hepgRunningProcs s)
             !isrunning <- childsRunning
             if isrunning then parentMain
                 else return ()
